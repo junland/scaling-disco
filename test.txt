@@ -1,1 +1,2 @@
 uses:\s+[a-zA-Z0-9/_-]+@[a-fA-F0-9]{40}
+sed -n '/uses:\s*[a-zA-Z0-9/_-]\+@[a-fA-F0-9]\{40\}/p' filename
