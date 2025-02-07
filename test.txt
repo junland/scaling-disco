@@ -1,2 +1,56 @@
 uses:\s+[a-zA-Z0-9/_-]+@[a-fA-F0-9]{40}
 sed -n '/uses:\s*[a-zA-Z0-9/_-]\+@[a-fA-F0-9]\{40\}/p' filename
+
+#!/bin/bash
+
+# Set your GitHub username and organization name
+GITHUB_USERNAME="your_username"
+ORG_NAME="your_org"
+
+# Function to fetch all repositories, handling pagination
+fetch_repositories() {
+    local page=1
+    local per_page=100
+    local all_repos=()
+
+    while true; do
+        echo "Fetching repositories, page $page..."
+        repos=$(gh repo list "$ORG_NAME" --limit $per_page --json name --jq '.[].name' --page=$page)
+
+        # Break if no more repositories are returned
+        if [[ -z "$repos" ]]; then
+            break
+        fi
+
+        all_repos+=($repos)
+        ((page++))
+    done
+
+    echo "${all_repos[@]}"
+}
+
+# Fetch all repositories
+repos=$(fetch_repositories)
+
+echo "Checking repositories in organization: $ORG_NAME"
+echo "Looking for branches created by: $GITHUB_USERNAME"
+echo "---------------------------------------------"
+
+for repo in $repos; do
+    echo "Checking repository: $repo"
+
+    # Fetch all branches in the repository
+    branches=$(gh api repos/$ORG_NAME/$repo/branches --jq '.[].name')
+
+    for branch in $branches; do
+        # Get the creator of the branch
+        creator=$(gh api repos/$ORG_NAME/$repo/branches/$branch --jq '.commit.author.login')
+
+        if [[ "$creator" == "$GITHUB_USERNAME" ]]; then
+            echo "✅ Branch '$branch' in '$repo' was created by you!"
+        fi
+    done
+    echo "---------------------------------------------"
+done
+
+echo "Done!"
